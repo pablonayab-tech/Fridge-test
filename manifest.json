@@ -1,1 +1,1 @@
-{"name":"Nevera","short_name":"Nevera","start_url":"./","scope":"./","display":"standalone","background_color":"#ffffff","theme_color":"#ffffff"}
+{"name":"Nevera","short_name":"Nevera","start_url":"./","scope":"./","display":"standalone","background_color":"#ffffff","theme_color":"#ffffff","icons":[{"src":"icon.png","sizes":"512x512","type":"image/png"}]}
