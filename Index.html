@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Nevera - Prueba</title>
+<link rel="manifest" href="manifest.json">
+<style>
+body{font-family:system-ui,sans-serif;padding:24px;max-width:420px;margin:auto}
+button{min-height:52px;width:100%;font-size:17px;border:0;border-radius:14px;background:#1F6B4F;color:#fff;margin:16px 0}
+pre{background:#f3f0e8;padding:12px;border-radius:10px;white-space:pre-wrap;font-size:14px}
+</style>
+</head>
+<body>
+<h1>Nevera - Prueba</h1>
+<pre id="estado">Cargando…</pre>
+<button id="btn">Activar avisos y probar</button>
+<script>
+const out = document.getElementById('estado');
+const log = t => out.textContent += '\n' + t;
+out.textContent = 'Instalada en pantalla de inicio: ' + (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches ? 'SÍ' : 'NO');
+log('Service worker: ' + ('serviceWorker' in navigator ? 'disponible' : 'NO disponible'));
+log('Notificaciones: ' + ('Notification' in window ? 'disponibles' : 'NO disponibles'));
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js', {scope:'./'}).then(()=>log('SW registrado')).catch(e=>log('Error SW: '+e));
+document.getElementById('btn').addEventListener('click', async () => {
+  try {
+    if (!('Notification' in window)) { log('Este navegador no permite notificaciones.'); return; }
+    const permiso = await Notification.requestPermission();
+    log('Permiso: ' + permiso);
+    if (permiso !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('Nevera - Prueba', { body: 'Si ves esto, los avisos funcionan.' });
+    log('Notificación enviada');
+  } catch (e) { log('Error: ' + e); }
+});
+</script>
+</body>
+</html>
