@@ -1,39 +1,71 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Nevera - Prueba</title>
+<title>Nevera</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
 <style>
-body{font-family:system-ui,sans-serif;padding:24px;max-width:420px;margin:auto}
-button{min-height:52px;width:100%;font-size:17px;border:0;border-radius:14px;background:#1F6B4F;color:#fff;margin:16px 0}
-pre{background:#f3f0e8;padding:12px;border-radius:10px;white-space:pre-wrap;font-size:14px}
+body{font-family:-apple-system,sans-serif;padding:24px}
+button{font-size:18px;padding:14px 20px;border:0;border-radius:12px;background:#2e9e6b;color:#fff}
+pre{background:#f3f3f3;padding:12px;border-radius:8px;white-space:pre-wrap}
 </style>
 </head>
 <body>
-<h1>Nevera - Prueba</h1>
-<pre id="estado">Cargando…</pre>
-<button id="btn">Activar avisos y probar</button>
+<h1>Nevera - prueba</h1>
+<pre id="estado"></pre>
+<button id="btn">Activar avisos</button>
 <script>
-const out = document.getElementById('estado');
-const log = t => out.textContent += '\n' + t;
-out.textContent = 'Instalada en pantalla de inicio: ' + (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches ? 'SÍ' : 'NO');
-log('Service worker: ' + ('serviceWorker' in navigator ? 'disponible' : 'NO disponible'));
-log('Notificaciones: ' + ('Notification' in window ? 'disponibles' : 'NO disponibles'));
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js', {scope:'./'}).then(()=>log('SW registrado')).catch(e=>log('Error SW: '+e));
+const SUPABASE_URL = 'https://ecagppjryzrzozjlamwe.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_g2A9KqUnIqXC4QmSPokLiA_wlvX0D4u';
+const VAPID_PUBLIC = 'BAITNAhrMf0PpIxR1bhcLd5NLFQAG-7LD41ZTPia6BvXS-NR7ebqpOHehxoG6P_XLHpBolBKIG5L3t-RT_IMnws';
+
+const est = document.getElementById('estado');
+const log = t => { est.textContent += t + '\n'; };
+
+function urlB64(s) {
+  const p = '='.repeat((4 - s.length % 4) % 4);
+  const b = atob((s + p).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...b].map(c => c.charCodeAt(0)));
+}
+
+const instalada = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+log('Instalada: ' + (instalada ? 'SÍ' : 'NO'));
+log('Push: ' + (('PushManager' in window) ? 'disponible' : 'NO disponible'));
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { scope: './' });
+}
+
 document.getElementById('btn').addEventListener('click', async () => {
   try {
-    if (!('Notification' in window)) { log('Este navegador no permite notificaciones.'); return; }
-    const permiso = await Notification.requestPermission();
-    log('Permiso: ' + permiso);
-    if (permiso !== 'granted') return;
+    const perm = await Notification.requestPermission();
+    log('Permiso: ' + perm);
+    if (perm !== 'granted') return;
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification('Nevera - Prueba', { body: 'Si ves esto, los avisos funcionan.' });
-    log('Notificación enviada');
-  } catch (e) { log('Error: ' + e); }
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64(VAPID_PUBLIC)
+      });
+    }
+    const j = sub.toJSON();
+    const r = await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth })
+    });
+    log('Guardado: ' + (r.ok ? 'OK' : (r.status === 409 ? 'ya estaba registrado' : 'ERROR ' + r.status)));
+  } catch (e) {
+    log('Error: ' + e.message);
+  }
 });
 </script>
 </body>
